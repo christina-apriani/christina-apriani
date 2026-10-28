@@ -107,6 +107,7 @@ State is stored locally in the browser. Nothing is transmitted anywhere.
 <div align="center">
 
 **Christina Apriani** · Head of Cyber Security Profesional
+
 *Red Team · Blue Team · Purple Team · Incident Response*
 
 <sub>All projects are defensive and methodology-focused. For authorized use only.</sub>
