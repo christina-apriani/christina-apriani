@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRISM — ATT&CK Purple Coverage Navigator</title>
+<meta name="author" content="Christina Apriani">
+<meta name="description" content="Purple-team coverage navigator. Map every ATT&CK v20 technique as tested, detected, validated, or a gap. Quantify coverage, surface blind spots, and build a prioritized hardening backlog.">
+<style>
+  :root{
+    --bg:#0a0810; --bg2:#120e1c; --panel:#141022; --panel2:#181328;
+    --line:#2a2140; --line2:#362a52; --text:#efeaf8; --muted:#9a8fb5; --faint:#665a85;
+    --purple:#a855f7; --purple2:#c77dff; --magenta:#e056fd; --glow:rgba(168,85,247,.18);
+    --red:#ff4d6d; --blue:#3b9bff; --green:#2ee6a0; --amber:#ffc53d; --gray:#2a2140;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; --r:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 600px at 80% -10%, var(--glow), transparent 60%),linear-gradient(180deg,#0a0810,#07050c);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--purple);color:#fff}
+  button{font-family:inherit;cursor:pointer} input,textarea,select{font-family:inherit}
+  .wrap{max-width:1600px;margin:0 auto;padding:0 20px 80px}
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(10,8,16,.95),rgba(10,8,16,.78));border-bottom:1px solid var(--line)}
+  .hbar{max-width:1600px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(145deg,var(--purple),#7c2fd6);box-shadow:0 0 22px var(--glow);font-weight:800;font-size:18px;color:#fff;font-family:var(--mono)}
+  .brand h1{font-size:16px;letter-spacing:.3px} .brand .sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px}
+  .tag{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:30px;border:1px solid var(--line2);color:var(--muted);background:var(--panel)}
+  .pill.live{color:var(--purple2);border-color:var(--line2)}
+  .pill.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--purple);margin-right:6px;box-shadow:0 0 8px var(--purple);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:0 20px;overflow-x:auto}
+  .tab{padding:13px 16px;color:var(--muted);font-weight:600;font-size:13px;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--text)} .tab.active{color:var(--purple2);border-bottom-color:var(--purple)}
+  .view{display:none;animation:fade .25s} .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h2 .bar{width:3px;height:14px;background:var(--purple);border-radius:2px;box-shadow:0 0 8px var(--glow)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+  @media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:15px;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;background:var(--glow);filter:blur(10px)}
+  .stat .k{font-family:var(--mono);font-size:28px;font-weight:700;line-height:1} .stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-top:7px}
+  .btn{background:linear-gradient(145deg,var(--purple),#7c2fd6);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;box-shadow:0 2px 14px var(--glow);transition:.15s}
+  .btn:hover{transform:translateY(-1px)} .btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line2);box-shadow:none}
+  .btn.ghost:hover{border-color:var(--purple)} .btn.sm{padding:6px 12px;font-size:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input.x,select.x{background:var(--bg2);border:1px solid var(--line2);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;outline:none}
+  input.x:focus,select.x:focus{border-color:var(--purple);box-shadow:0 0 0 3px var(--glow)}
+  /* legend */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,.1)}
+  /* matrix */
+  .matrix{display:flex;gap:8px;overflow-x:auto;padding-bottom:14px}
+  .col{min-width:150px;flex:0 0 auto}
+  .ch{font-size:10px;font-weight:700;color:var(--text);padding:9px 8px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px 8px 0 0;text-align:center;line-height:1.3;min-height:52px;display:flex;flex-direction:column;justify-content:center}
+  .ch .id{font-family:var(--mono);font-size:8px;color:var(--faint);font-weight:400;margin-top:2px}
+  .ch .mini{display:flex;height:3px;margin-top:5px;border-radius:2px;overflow:hidden;background:var(--bg2)}
+  .cell{background:var(--bg2);border:1px solid var(--line2);border-top:none;padding:5px}
+  .col .cell:last-child{border-radius:0 0 8px 8px}
+  .t{border-radius:5px;padding:6px 7px;margin-bottom:5px;font-size:10px;cursor:pointer;transition:.12s;border:1px solid transparent;position:relative;background:var(--gray)}
+  .t:hover{transform:scale(1.02);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .t .tid{font-family:var(--mono);font-size:8px;opacity:.8} .t .tn{line-height:1.3;margin-top:1px}
+  .t.untested{background:#1c1730;color:var(--muted)}
+  .t.tested{background:rgba(255,77,109,.22);color:#ffb3c1;border-color:rgba(255,77,109,.5)}
+  .t.detected{background:rgba(59,155,255,.2);color:#bcdcff;border-color:rgba(59,155,255,.5)}
+  .t.validated{background:rgba(46,230,160,.2);color:#b8f5dd;border-color:rgba(46,230,160,.5)}
+  .t .badge{position:absolute;top:3px;right:4px;font-size:9px}
+  /* donut */
+  .donut{width:160px;height:160px;position:relative;margin:0 auto}
+  .donut svg{transform:rotate(-90deg)}
+  .donut .c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+  .donut .c .n{font-family:var(--mono);font-size:32px;font-weight:800}
+  .donut .c .s{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+  .bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px}
+  .bar .bn{width:150px;color:var(--muted);font-size:11px}
+  .bar .bt{flex:1;height:18px;background:var(--bg2);border:1px solid var(--line2);border-radius:5px;overflow:hidden;display:flex}
+  .bar .bt i{display:block;height:100%}
+  .bar .bv{width:38px;text-align:right;font-family:var(--mono);font-size:11px}
+  /* backlog */
+  .blitem{background:var(--bg2);border:1px solid var(--line2);border-left:3px solid var(--red);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+  .blitem .bt2{font-weight:700} .blitem .bt2 .tid{font-family:var(--mono);font-size:11px;color:var(--purple2);margin-right:7px}
+  .blitem .bm{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:3px}
+  .blitem .brec{font-size:12px;color:var(--muted);margin-top:8px}
+  .prio{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700}
+  .prio.p1{background:rgba(255,77,109,.18);color:var(--red)} .prio.p2{background:rgba(255,197,61,.15);color:var(--amber)} .prio.p3{background:rgba(59,155,255,.15);color:var(--blue)}
+  .empty{text-align:center;color:var(--faint);padding:40px;font-size:13px}
+  footer{margin-top:40px;padding:22px 0;border-top:1px solid var(--line);color:var(--faint);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer b{color:var(--muted)} .sig{font-family:var(--mono)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel2);border:1px solid var(--purple);color:var(--text);padding:12px 20px;border-radius:10px;font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.6);transition:.3s;z-index:200;opacity:0}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar">
+    <div class="brand">
+      <div class="logo">P</div>
+      <div><h1>PRISM &middot; ATT&amp;CK Purple Coverage Navigator</h1>
+        <div class="sub">TESTED &times; DETECTED &bull; ATT&amp;CK v20</div></div>
+    </div>
+    <div class="tag">
+      <span class="pill live">PURPLE MODE</span>
+      <button class="btn ghost sm" onclick="App.exportLayer()">Export layer</button>
+      <button class="btn ghost sm" onclick="App.reset()">Reset</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button class="tab active" data-v="matrix">Coverage Matrix</button>
+    <button class="tab" data-v="analytics">Analytics</button>
+    <button class="tab" data-v="backlog">Hardening Backlog</button>
+  </nav>
+
+  <div class="stats">
+    <div class="stat"><div class="k" id="s_detect" style="color:var(--green)">0%</div><div class="l">Detection Coverage</div></div>
+    <div class="stat"><div class="k" id="s_valid" style="color:var(--purple2)">0%</div><div class="l">Validated (tested+detected)</div></div>
+    <div class="stat"><div class="k" id="s_gap" style="color:var(--red)">0</div><div class="l">Confirmed Gaps</div></div>
+    <div class="stat"><div class="k" id="s_blind" style="color:var(--amber)">0</div><div class="l">Blind Spots</div></div>
+    <div class="stat"><div class="k" id="s_tested" style="color:var(--blue)">0</div><div class="l">Techniques Tested</div></div>
+  </div>
+
+  <!-- MATRIX -->
+  <section class="view active" id="matrix">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <div class="legend">
+          <span><i class="sw" style="background:#1c1730"></i>untested</span>
+          <span><i class="sw" style="background:rgba(255,77,109,.5)"></i>tested, not detected (gap)</span>
+          <span><i class="sw" style="background:rgba(59,155,255,.5)"></i>detected, not tested</span>
+          <span><i class="sw" style="background:rgba(46,230,160,.5)"></i>validated</span>
+        </div>
+        <input class="x" id="filter" placeholder="Filter techniques..." style="max-width:220px" oninput="App.renderMatrix()">
+      </div>
+      <p style="font-size:12px;color:var(--faint);margin-bottom:12px">Click a technique to cycle its state: untested &rarr; tested &rarr; detected &rarr; validated. The goal of a purple cycle is to turn red into green.</p>
+      <div class="matrix" id="matrixWrap"></div>
+    </div>
+  </section>
+
+  <!-- ANALYTICS -->
+  <section class="view" id="analytics">
+    <div class="card" style="display:grid;grid-template-columns:200px 1fr;gap:24px;align-items:center">
+      <div>
+        <div class="donut">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="66" fill="none" stroke="var(--line2)" stroke-width="14"/>
+            <circle id="donutRing" cx="80" cy="80" r="66" fill="none" stroke="var(--green)" stroke-width="14" stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="414.7"/>
+          </svg>
+          <div class="c"><div class="n" id="donutNum">0%</div><div class="s">detection</div></div>
+        </div>
+      </div>
+      <div>
+        <h2 style="margin-bottom:14px"><span class="bar"></span>State Breakdown</h2>
+        <div id="stateBreak"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h2><span class="bar"></span>Coverage by Tactic</h2>
+      <div id="tacCov"></div>
+    </div>
+  </section>
+
+  <!-- BACKLOG -->
+  <section class="view" id="backlog">
+    <div class="card">
+      <h2><span class="bar"></span>Prioritized Hardening Backlog</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Auto-ranked from your coverage state. Confirmed gaps (tested, not detected) come first because an adversary has a proven, unseen path. Blind spots follow.</p>
+      <div id="backlogList"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>Built by <b class="sig">Christina Apriani</b> &bull; PRISM Purple Coverage Navigator</div>
+    <div class="sig">MITRE ATT&amp;CK v20 (Oct 2026) &bull; 15 tactics</div>
+  </footer>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* PRISM — ATT&CK Purple Coverage Navigator. Author: Christina Apriani.
+   Coverage-mapping artifact. Records test and detection state; no offensive content. */
+
+const TACTICS=[
+  {k:"recon",n:"Reconnaissance",id:"TA0043"},{k:"resdev",n:"Resource Dev",id:"TA0042"},
+  {k:"ia",n:"Initial Access",id:"TA0001"},{k:"exec",n:"Execution",id:"TA0002"},
+  {k:"persist",n:"Persistence",id:"TA0003"},{k:"privesc",n:"Privilege Esc",id:"TA0004"},
+  {k:"stealth",n:"Stealth",id:"TA0005"},{k:"defimp",n:"Defense Impair",id:"TA0112"},
+  {k:"credacc",n:"Credential Access",id:"TA0006"},{k:"disc",n:"Discovery",id:"TA0007"},
+  {k:"lat",n:"Lateral Movement",id:"TA0008"},{k:"coll",n:"Collection",id:"TA0009"},
+  {k:"c2",n:"Command & Control",id:"TA0011"},{k:"exfil",n:"Exfiltration",id:"TA0010"},
+  {k:"impact",n:"Impact",id:"TA0040"}
+];
+const TECHS=[
+  ["T1595","Active Scanning","recon",3],["T1590","Gather Network Info","recon",3],["T1589","Gather Identity Info","recon",2],
+  ["T1583","Acquire Infrastructure","resdev",3],["T1587","Develop Capabilities","resdev",3],["T1585","Establish Accounts","resdev",3],
+  ["T1566","Phishing","ia",1],["T1190","Exploit Public App","ia",1],["T1078","Valid Accounts","ia",1],
+  ["T1059.001","PowerShell","exec",1],["T1059.003","Windows Cmd Shell","exec",2],["T1053.005","Scheduled Task","exec",2],
+  ["T1547","Autostart Execution","persist",2],["T1543.003","Windows Service","persist",2],["T1136","Create Account","persist",2],
+  ["T1068","Exploit for PrivEsc","privesc",1],["T1548","Abuse Elevation Control","privesc",2],
+  ["T1027","Obfuscated Files","stealth",2],["T1055","Process Injection","stealth",1],["T1036","Masquerading","stealth",2],
+  ["T1562.001","Impair Defenses","defimp",1],["T1070","Indicator Removal","defimp",1],
+  ["T1003.001","LSASS Dumping","credacc",1],["T1110","Brute Force","credacc",2],["T1555","Password Stores","credacc",2],
+  ["T1087","Account Discovery","disc",3],["T1018","Remote System Disc","disc",3],["T1082","System Info Disc","disc",3],
+  ["T1021.001","Remote: RDP","lat",1],["T1021.002","Remote: SMB","lat",1],["T1570","Lateral Tool Transfer","lat",2],
+  ["T1560","Archive Data","coll",3],["T1005","Data from Local System","coll",3],
+  ["T1071.001","App Protocol: Web","c2",1],["T1105","Ingress Tool Transfer","c2",2],["T1573","Encrypted Channel","c2",2],
+  ["T1041","Exfil Over C2","exfil",1],["T1567","Exfil Over Web Service","exfil",2],
+  ["T1486","Data Encrypted (Impact)","impact",1],["T1490","Inhibit Recovery","impact",1]
+];
+const REC={ // generic hardening recommendation per state
+  gap:"A known attacker path produced no detection. Build a SIEM rule for this behavior and re-run the test.",
+  blind:"Never exercised and no detection assumed. Add to the next emulation cycle and author a detection in parallel."
+};
+const STATES=["untested","tested","detected","validated"];
+
+const App={
+  state:{cov:{}}, KEY:"prism_pcn_v1",
+  init(){ this.load(); this.bindTabs(); this.renderMatrix(); this.refresh(); },
+  bindTabs(){ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>this.tab(b.dataset.v)); },
+  tab(v){ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.v===v));
+    document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));
+    if(v==='analytics')this.renderAnalytics(); if(v==='backlog')this.renderBacklog(); },
+
+  st(id){ return this.state.cov[id]||'untested'; },
+  cycle(id){ const cur=this.st(id); const next=STATES[(STATES.indexOf(cur)+1)%STATES.length];
+    if(next==='untested')delete this.state.cov[id]; else this.state.cov[id]=next;
+    this.save(); this.renderMatrix(); this.refresh(); },
+
+  renderMatrix(){
+    const q=(document.getElementById('filter').value||'').toLowerCase();
+    document.getElementById('matrixWrap').innerHTML=TACTICS.map(tac=>{
+      const ts=TECHS.filter(t=>t[2]===tac.k && (!q||(t[0]+t[1]).toLowerCase().includes(q)));
+      // mini bar
+      const states=TECHS.filter(t=>t[2]===tac.k).map(t=>this.st(t[0]));
+      const col={untested:'#1c1730',tested:'#ff4d6d',detected:'#3b9bff',validated:'#2ee6a0'};
+      const mini=states.map(s=>`<i style="flex:1;background:${col[s]}"></i>`).join('');
+      return `<div class="col">
+        <div class="ch">${tac.n}<div class="id">${tac.id}</div><div class="mini">${mini}</div></div>
+        <div class="cell">
+          ${ts.map(t=>{ const s=this.st(t[0]); const badge={untested:'',tested:'&#9888;',detected:'&#128065;',validated:'&#10003;'}[s];
+            return `<div class="t ${s}" onclick="App.cycle('${t[0]}')" title="${t[1]} — ${s}">
+              <span class="badge">${badge}</span><div class="tid">${t[0]}</div><div class="tn">${t[1]}</div></div>`;}).join('')
+            || '<div style="font-size:9px;color:var(--faint);text-align:center;padding:6px">—</div>'}
+        </div></div>`;
+    }).join('');
+  },
+
+  counts(){
+    let tested=0,detected=0,validated=0,gap=0,blind=0;
+    TECHS.forEach(t=>{ const s=this.st(t[0]);
+      if(s==='tested'){tested++;gap++;}
+      else if(s==='detected'){detected++;}
+      else if(s==='validated'){tested++;detected++;validated++;}
+    });
+    blind=TECHS.filter(t=>this.st(t[0])==='untested').length;
+    const total=TECHS.length;
+    return {total,tested,detected,validated,gap,blind,
+      detectPct:Math.round(detected/total*100),
+      validPct:tested?Math.round(validated/tested*100):0};
+  },
+  refresh(){
+    const c=this.counts();
+    document.getElementById('s_detect').textContent=c.detectPct+'%';
+    document.getElementById('s_valid').textContent=c.validPct+'%';
+    document.getElementById('s_gap').textContent=c.gap;
+    document.getElementById('s_blind').textContent=c.blind;
+    document.getElementById('s_tested').textContent=c.tested;
+  },
+  renderAnalytics(){
+    const c=this.counts(), circ=414.7;
+    document.getElementById('donutRing').style.strokeDashoffset=circ-(circ*c.detectPct/100);
+    document.getElementById('donutNum').textContent=c.detectPct+'%';
+    const breaks=[["Validated (tested + detected)",c.validated,"#2ee6a0"],["Detected, not tested",TECHS.filter(t=>this.st(t[0])==='detected').length,"#3b9bff"],["Tested, not detected (gap)",c.gap,"#ff4d6d"],["Untested blind spots",c.blind,"#2a2140"]];
+    document.getElementById('stateBreak').innerHTML=breaks.map(b=>`
+      <div class="bar"><span class="bn">${b[0]}</span>
+        <div class="bt"><i style="width:${b[1]/c.total*100}%;background:${b[2]}"></i></div>
+        <span class="bv">${b[1]}</span></div>`).join('');
+    // tactic coverage
+    document.getElementById('tacCov').innerHTML=TACTICS.map(tac=>{
+      const ts=TECHS.filter(t=>t[2]===tac.k); const tot=ts.length;
+      const v=ts.filter(t=>this.st(t[0])==='validated').length;
+      const d=ts.filter(t=>this.st(t[0])==='detected').length;
+      const g=ts.filter(t=>this.st(t[0])==='tested').length;
+      return `<div class="bar"><span class="bn">${tac.n}</span>
+        <div class="bt">
+          <i style="width:${v/tot*100}%;background:#2ee6a0"></i>
+          <i style="width:${d/tot*100}%;background:#3b9bff"></i>
+          <i style="width:${g/tot*100}%;background:#ff4d6d"></i>
+        </div><span class="bv">${Math.round((v+d)/tot*100)}%</span></div>`;
+    }).join('');
+  },
+  renderBacklog(){
+    const items=[];
+    TECHS.forEach(t=>{ const s=this.st(t[0]); const tac=TACTICS.find(x=>x.k===t[2]);
+      if(s==='tested') items.push({t,tac,kind:'gap',prio:1,w:t[3]});
+      else if(s==='untested') items.push({t,tac,kind:'blind',prio:t[3]<=1?2:3,w:t[3]});
+    });
+    items.sort((a,b)=>a.prio-b.prio || a.w-b.w);
+    const el=document.getElementById('backlogList');
+    if(!items.length){ el.innerHTML='<div class="empty">No gaps or blind spots. Every technique is detected or validated.</div>'; return; }
+    const pl={1:'P1 Critical gap',2:'P2 High',3:'P3 Medium'};
+    el.innerHTML=items.slice(0,40).map(it=>`
+      <div class="blitem" style="border-left-color:${it.kind==='gap'?'var(--red)':'var(--amber)'}">
+        <div class="row" style="justify-content:space-between">
+          <div><div class="bt2"><span class="tid">${it.t[0]}</span>${it.t[1]}</div>
+            <div class="bm">${it.tac.n} &bull; ${it.tac.id} &bull; ${it.kind==='gap'?'TESTED, NOT DETECTED':'UNTESTED BLIND SPOT'}</div></div>
+          <span class="prio p${it.prio}">${pl[it.prio]}</span>
+        </div>
+        <div class="brec">${REC[it.kind]}</div>
+      </div>`).join('');
+  },
+  exportLayer(){
+    const col={tested:'#ff4d6d',detected:'#3b9bff',validated:'#2ee6a0'};
+    const layer={ name:"PRISM Purple Coverage",author:"Christina Apriani",versions:{attack:"20"},domain:"enterprise-attack",
+      description:"Purple-team coverage: tested, detected, validated states.",
+      techniques:Object.keys(this.state.cov).map(id=>({techniqueID:id,color:col[this.state.cov[id]]||'',
+        comment:this.state.cov[id],enabled:true})) };
+    const b=new Blob([JSON.stringify(layer,null,2)],{type:"application/json"});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='prism_coverage_layer.json';a.click();
+    this.toast('Coverage layer exported');
+  },
+  reset(){ if(confirm('Clear all coverage state?')){ this.state.cov={}; this.save(); this.renderMatrix(); this.refresh(); } },
+  toast(m){ const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(this._t);this._t=setTimeout(()=>t.classList.remove('show'),2400); },
+  save(){ try{localStorage.setItem(this.KEY,JSON.stringify(this.state));}catch(e){} },
+  load(){ try{const s=localStorage.getItem(this.KEY);if(s)this.state=Object.assign(this.state,JSON.parse(s));}catch(e){} }
+};
+App.init();
+</script>
+</body>
+</html>

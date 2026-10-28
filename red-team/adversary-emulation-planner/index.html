@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS Adversary Emulation Planner</title>
+<meta name="author" content="Christina Apriani">
+<meta name="description" content="ATT&CK v20 aligned adversary emulation planning console. Build threat-informed engagement plans, map TTPs across 15 tactics, and bridge each behavior to expected defensive telemetry.">
+<style>
+  :root{
+    --bg:#0a0b0e; --bg2:#101218; --panel:#13161d; --panel2:#171b24;
+    --line:#242a36; --line2:#2e3542; --text:#e8ebf2; --muted:#8a93a6; --faint:#5a6273;
+    --red:#ff3b47; --red2:#ff6b74; --red-dim:#5a1a1f; --red-glow:rgba(255,59,71,.15);
+    --amber:#ffb020; --green:#2ec27e; --blue:#3b9bff; --accent:var(--red);
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono','Cascadia Code',Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    --r:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:
+      radial-gradient(1200px 600px at 85% -10%, var(--red-glow), transparent 60%),
+      linear-gradient(180deg,#0a0b0e,#07080a);
+    color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--red);color:#fff}
+  a{color:var(--red2);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit}
+  .wrap{max-width:1500px;margin:0 auto;padding:0 20px 80px}
+
+  /* Header */
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+    background:linear-gradient(180deg,rgba(10,11,14,.95),rgba(10,11,14,.78));
+    border-bottom:1px solid var(--line)}
+  .hbar{max-width:1500px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;
+    background:linear-gradient(145deg,var(--red),#b3161f);box-shadow:0 0 22px var(--red-glow);
+    font-weight:800;font-size:18px;color:#fff;font-family:var(--mono)}
+  .brand h1{font-size:16px;letter-spacing:.3px;font-weight:700}
+  .brand .sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px}
+  .tag{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:30px;
+    border:1px solid var(--line2);color:var(--muted);background:var(--panel)}
+  .pill.live{color:var(--red2);border-color:var(--red-dim)}
+  .pill.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--red);margin-right:6px;box-shadow:0 0 8px var(--red);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* Tabs */
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:0 20px;overflow-x:auto}
+  .tab{padding:13px 16px;color:var(--muted);font-weight:600;font-size:13px;border:none;background:none;
+    border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--red2);border-bottom-color:var(--red)}
+  .view{display:none;animation:fade .25s}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Layout */
+  .grid{display:grid;gap:18px}
+  .cols-2{grid-template-columns:1fr 1fr}
+  .cols-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:980px){.cols-2,.cols-3{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+    border-radius:var(--r);padding:18px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:14px;
+    display:flex;align-items:center;gap:8px}
+  .card h2 .bar{width:3px;height:14px;background:var(--red);border-radius:2px;box-shadow:0 0 8px var(--red-glow)}
+
+  /* Stat tiles */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+    border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;
+    background:var(--red-glow);filter:blur(10px)}
+  .stat .k{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1}
+  .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:8px}
+  .stat .d{font-size:11px;color:var(--faint);margin-top:4px}
+
+  /* Forms */
+  label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:14px 0 6px}
+  input.x,textarea.x,select.x{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--text);
+    padding:10px 12px;border-radius:8px;font-size:13px;outline:none;transition:.15s}
+  input.x:focus,textarea.x:focus,select.x:focus{border-color:var(--red);box-shadow:0 0 0 3px var(--red-glow)}
+  textarea.x{resize:vertical;min-height:74px;font-family:var(--mono);font-size:12px}
+  .btn{background:linear-gradient(145deg,var(--red),#c21722);color:#fff;border:none;padding:10px 16px;
+    border-radius:8px;font-weight:700;font-size:13px;transition:.15s;box-shadow:0 2px 14px var(--red-glow)}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px var(--red-glow)}
+  .btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line2);box-shadow:none}
+  .btn.ghost:hover{border-color:var(--red)}
+  .btn.sm{padding:6px 12px;font-size:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  /* Actor cards */
+  .actors{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .actor{background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:14px;transition:.18s;cursor:pointer}
+  .actor:hover{border-color:var(--red);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .actor.sel{border-color:var(--red);box-shadow:0 0 0 2px var(--red-glow)}
+  .actor .n{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+  .actor .code{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px}
+  .actor .meta{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .actor .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:20px;background:var(--red-dim);
+    color:var(--red2);border:1px solid var(--red-dim)}
+  .chip.n{background:#1a1d26;color:var(--muted);border-color:var(--line2)}
+
+  /* Matrix */
+  .matrix{display:flex;gap:10px;overflow-x:auto;padding-bottom:12px}
+  .col{min-width:168px;flex:0 0 auto}
+  .col .ch{font-size:11px;font-weight:700;color:var(--text);padding:9px 10px;background:var(--panel2);
+    border:1px solid var(--line2);border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}
+  .col .ch .id{font-family:var(--mono);font-size:9px;color:var(--faint);font-weight:400}
+  .col .cnt{background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:20px;min-width:18px;text-align:center}
+  .col .cnt.z{background:#1a1d26;color:var(--faint)}
+  .cell{background:var(--bg2);border:1px solid var(--line2);border-top:none;padding:6px;min-height:40px}
+  .col .cell:last-child{border-radius:0 0 8px 8px}
+  .tech{background:var(--panel);border:1px solid var(--line2);border-radius:6px;padding:7px 8px;margin-bottom:6px;
+    font-size:11px;cursor:pointer;transition:.12s;position:relative}
+  .tech:hover{border-color:var(--red)}
+  .tech.inplan{border-left:3px solid var(--red);background:#16181f}
+  .tech .tid{font-family:var(--mono);font-size:9px;color:var(--red2)}
+  .tech .tn{color:var(--text);line-height:1.35;margin-top:1px}
+
+  /* Plan list */
+  .plan-item{background:var(--bg2);border:1px solid var(--line2);border-left:3px solid var(--red);
+    border-radius:8px;padding:12px 14px;margin-bottom:10px}
+  .plan-item .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .plan-item .tt{font-weight:700}
+  .plan-item .tt .tid{font-family:var(--mono);font-size:11px;color:var(--red2);margin-right:7px}
+  .plan-item .tac{font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase}
+  .plan-item .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  @media(max-width:700px){.plan-item .grid2{grid-template-columns:1fr}}
+  .blk{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:9px 10px}
+  .blk .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--faint);margin-bottom:4px}
+  .blk.tele{border-left:2px solid var(--blue)}
+  .blk.det{border-left:2px solid var(--green)}
+  .x-del{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:6px;padding:3px 9px;font-size:11px}
+  .x-del:hover{border-color:var(--red);color:var(--red2)}
+
+  .empty{text-align:center;color:var(--faint);padding:40px 20px;font-size:13px}
+  .empty .ico{font-size:34px;opacity:.4;margin-bottom:10px}
+
+  /* progress */
+  .progress{height:8px;background:var(--bg2);border-radius:20px;overflow:hidden;border:1px solid var(--line2)}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--red2));transition:.6s;border-radius:20px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:10px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:3px}
+
+  /* ROE / safety */
+  .checklist{list-style:none}
+  .checklist li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+  .checklist li:last-child{border:none}
+  .cb{width:18px;height:18px;border:1px solid var(--line2);border-radius:5px;flex:0 0 auto;margin-top:1px;
+    display:grid;place-items:center;cursor:pointer;transition:.12s;font-size:11px;color:transparent}
+  .cb.on{background:var(--red);border-color:var(--red);color:#fff}
+  .checklist .ct{font-size:13px}
+  .checklist .cd{font-size:11px;color:var(--faint);margin-top:2px}
+
+  .note{font-size:12px;color:var(--muted);background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--amber);
+    padding:11px 13px;border-radius:7px;line-height:1.55}
+  footer{margin-top:40px;padding:22px 0;border-top:1px solid var(--line);color:var(--faint);font-size:12px;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer b{color:var(--muted)}
+  .sig{font-family:var(--mono)}
+  /* toast */
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--panel2);border:1px solid var(--red);color:var(--text);padding:12px 20px;border-radius:10px;
+    font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.6);transition:.3s;z-index:200;opacity:0}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(5,6,8,.75);backdrop-filter:blur(4px);z-index:150;
+    display:none;place-items:center;padding:20px}
+  .modal.open{display:grid}
+  .modal .box{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line2);
+    border-radius:14px;max-width:560px;width:100%;padding:24px;max-height:85vh;overflow:auto}
+  .modal h3{font-size:16px;margin-bottom:4px;display:flex;gap:9px;align-items:center}
+  .modal .tid-b{font-family:var(--mono);font-size:12px;color:var(--red2)}
+  .modal p{color:var(--muted);font-size:13px;margin:10px 0;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <h1>ATLAS &middot; Adversary Emulation Planner</h1>
+        <div class="sub">THREAT-INFORMED ENGAGEMENT DESIGN &bull; ATT&amp;CK v20</div>
+      </div>
+    </div>
+    <div class="tag">
+      <span class="pill live">PLANNING MODE</span>
+      <span class="pill" id="verPill">ATT&amp;CK v20</span>
+      <button class="btn ghost sm" onclick="App.exportJSON()">Export JSON</button>
+      <button class="btn sm" onclick="window.print()">Print Plan</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button class="tab active" data-v="dash">Overview</button>
+    <button class="tab" data-v="scope">Scope &amp; ROE</button>
+    <button class="tab" data-v="actors">Threat Profiles</button>
+    <button class="tab" data-v="matrix">TTP Matrix</button>
+    <button class="tab" data-v="plan">Emulation Plan</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section class="view active" id="dash">
+    <div class="stats">
+      <div class="stat"><div class="k" id="s_tech" style="color:var(--red2)">0</div><div class="l">Techniques Planned</div><div class="d">selected for emulation</div></div>
+      <div class="stat"><div class="k" id="s_tac">0<span style="font-size:16px;color:var(--faint)">/15</span></div><div class="l">Tactic Coverage</div><div class="d">kill-chain breadth</div></div>
+      <div class="stat"><div class="k" id="s_cov" style="color:var(--amber)">0%</div><div class="l">Chain Completeness</div><div class="d">end-to-end emulation</div></div>
+      <div class="stat"><div class="k" id="s_safe" style="color:var(--green)">0<span style="font-size:16px;color:var(--faint)">/6</span></div><div class="l">Safety Controls</div><div class="d">ROE sign-off</div></div>
+    </div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2><span class="bar"></span>Engagement Readiness</h2>
+        <div style="margin-bottom:6px;font-size:12px;color:var(--muted)">Kill-chain coverage</div>
+        <div class="progress"><i id="barCov" style="width:0%"></i></div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--red)"></i>planned</span>
+          <span><i class="dot" style="background:var(--bg2);border:1px solid var(--line2)"></i>gap</span>
+        </div>
+        <div style="margin-top:18px" id="readinessList"></div>
+      </div>
+      <div class="card">
+        <h2><span class="bar"></span>What ATLAS Produces</h2>
+        <p style="color:var(--muted);font-size:13px;line-height:1.7">
+          ATLAS turns a threat hypothesis into a defensible, scoped emulation plan. Pick a documented
+          adversary profile or build from zero, assign TTPs across the 15 ATT&amp;CK v20 tactics, and
+          attach a rule-of-engagement and safety control to every behavior.
+        </p>
+        <ul class="checklist" style="margin-top:4px">
+          <li><span class="cb on">&#10003;</span><div><div class="ct">Threat-informed scoping</div><div class="cd">every objective maps to a real adversary behavior</div></div></li>
+          <li><span class="cb on">&#10003;</span><div><div class="ct">Blue-team bridge on each TTP</div><div class="cd">expected telemetry + detection opportunity captured up front</div></div></li>
+          <li><span class="cb on">&#10003;</span><div><div class="ct">De-confliction &amp; safety gates</div><div class="cd">no behavior enters execution without a control</div></div></li>
+          <li><span class="cb on">&#10003;</span><div><div class="ct">Portable artifact</div><div class="cd">export to JSON or print for approval sign-off</div></div></li>
+        </ul>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <div class="note">
+        <b style="color:var(--amber)">Operating principle.</b> ATLAS is a planning and coordination surface. It
+        documents <i>which</i> adversary behaviors an authorized engagement will emulate and <i>how</i> defenders
+        should see them. It holds no exploit code, payloads, or execution tooling. Run only against systems you are
+        explicitly authorized to test, under signed rules of engagement.
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOPE -->
+  <section class="view" id="scope">
+    <div class="grid cols-2">
+      <div class="card">
+        <h2><span class="bar"></span>Engagement Definition</h2>
+        <label class="f">Operation name</label>
+        <input class="x" id="e_name" placeholder="e.g. Operation Ironvale">
+        <label class="f">Primary objective</label>
+        <textarea class="x" id="e_obj" placeholder="e.g. Validate detection and response to a credential-theft to data-exfiltration chain against the corporate identity plane."></textarea>
+        <label class="f">In-scope assets / environment</label>
+        <textarea class="x" id="e_scope" placeholder="e.g. Corp AD forest (lab replica), 2 segmented subnets, EDR-managed endpoints. Production excluded."></textarea>
+        <label class="f">Engagement window</label>
+        <input class="x" id="e_window" placeholder="e.g. 2026-11-10 to 2026-11-21, business hours only">
+      </div>
+      <div class="card">
+        <h2><span class="bar"></span>Rules of Engagement &amp; Safety Gates</h2>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:6px">Each control must be checked before the plan is approved for execution.</p>
+        <ul class="checklist" id="roeList"></ul>
+        <div style="margin-top:14px" class="note">
+          <b style="color:var(--amber)">De-confliction.</b> Name the control who holds the stop authority and the
+          out-of-band channel for calling an abort. Destructive-impact techniques stay simulated unless written
+          approval exists.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACTORS -->
+  <section class="view" id="actors">
+    <div class="card">
+      <h2><span class="bar"></span>Documented Threat Profiles</h2>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+        Illustrative reference drawn from public ATT&amp;CK Groups entries. Select a profile to seed the plan with
+        its characteristic behavior themes, then refine. Characterizations are high-level, not procedural.
+      </p>
+      <div class="actors" id="actorGrid"></div>
+    </div>
+  </section>
+
+  <!-- MATRIX -->
+  <section class="view" id="matrix">
+    <div class="card">
+      <h2><span class="bar"></span>ATT&amp;CK v20 Technique Matrix</h2>
+      <div class="row" style="margin-bottom:14px">
+        <input class="x" id="filter" placeholder="Filter techniques by name or ID..." style="max-width:320px" oninput="App.renderMatrix()">
+        <span class="pill" id="matrixCount">0 in plan</span>
+        <span style="font-size:12px;color:var(--faint)">Click a technique to add it to the plan &middot; click again to remove</span>
+      </div>
+      <div class="matrix" id="matrixWrap"></div>
+    </div>
+  </section>
+
+  <!-- PLAN -->
+  <section class="view" id="plan">
+    <div class="card">
+      <h2><span class="bar"></span>Current Emulation Plan</h2>
+      <div class="row" style="margin-bottom:14px">
+        <span class="pill" id="planHdr">0 techniques</span>
+        <button class="btn ghost sm" onclick="App.exportJSON()">Export JSON</button>
+        <button class="btn ghost sm" onclick="App.clearPlan()">Clear plan</button>
+      </div>
+      <div id="planList"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div>Built by <b class="sig">Christina Apriani</b> &bull; ATLAS Adversary Emulation Planner</div>
+    <div class="sig">Aligned to MITRE ATT&amp;CK v20 (Oct 2026) &bull; 15 Enterprise tactics</div>
+  </footer>
+</div>
+
+<div id="toast"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+/* ============================================================
+   ATLAS Adversary Emulation Planner
+   Author: Christina Apriani
+   Data: curated reference aligned to MITRE ATT&CK v20 (public).
+   No exploit code, payloads, or execution tooling.
+   ============================================================ */
+"use strict";
+
+// --- ATT&CK v20 Enterprise tactics (post Defense-Evasion split) ---
+const TACTICS = [
+  {id:"TA0043",k:"recon",name:"Reconnaissance"},
+  {id:"TA0042",k:"resdev",name:"Resource Development"},
+  {id:"TA0001",k:"ia",name:"Initial Access"},
+  {id:"TA0002",k:"exec",name:"Execution"},
+  {id:"TA0003",k:"persist",name:"Persistence"},
+  {id:"TA0004",k:"privesc",name:"Privilege Escalation"},
+  {id:"TA0005",k:"stealth",name:"Stealth"},
+  {id:"TA0112",k:"defimp",name:"Defense Impairment"},
+  {id:"TA0006",k:"credacc",name:"Credential Access"},
+  {id:"TA0007",k:"disc",name:"Discovery"},
+  {id:"TA0008",k:"lat",name:"Lateral Movement"},
+  {id:"TA0009",k:"coll",name:"Collection"},
+  {id:"TA0011",k:"c2",name:"Command & Control"},
+  {id:"TA0010",k:"exfil",name:"Exfiltration"},
+  {id:"TA0040",k:"impact",name:"Impact"}
+];
+
+// Curated technique library. telemetry/detect = defensive bridge (blue team value).
+const TECHS = [
+  // Reconnaissance
+  {id:"T1595",name:"Active Scanning",t:"recon",desc:"Probing target infrastructure for exposed services and hosts.",tele:"Perimeter firewall / IDS connection logs, honeypot hits, WAF events.",det:"Alert on scan signatures and anomalous source-to-many connection fan-out."},
+  {id:"T1590",name:"Gather Victim Network Information",t:"recon",desc:"Collecting network ranges, domains, and topology from open sources.",tele:"DNS query logs, external WHOIS/cert transparency monitoring.",det:"Monitor newly observed domains and certificate issuance for owned brands."},
+  {id:"T1589",name:"Gather Victim Identity Information",t:"recon",desc:"Enumerating employee names, emails, and credentials from public exposure.",tele:"Credential-leak monitoring, OSINT exposure feeds.",det:"Track workforce emails appearing in breach corpora; enforce MFA."},
+  // Resource Development
+  {id:"T1583",name:"Acquire Infrastructure",t:"resdev",desc:"Standing up domains, servers, or cloud accounts for the operation.",tele:"Newly registered look-alike domains, passive DNS.",det:"Typosquat / brand-similarity domain monitoring with auto-triage."},
+  {id:"T1587",name:"Develop Capabilities",t:"resdev",desc:"Preparing tooling and resources ahead of the engagement (planning artifact only).",tele:"n/a (pre-intrusion)",det:"Threat-intel enrichment on infrastructure indicators."},
+  {id:"T1585",name:"Establish Accounts",t:"resdev",desc:"Creating personas or accounts used to approach targets.",tele:"Inbound social / email first-contact metadata.",det:"Flag external senders with no prior history to finance/HR."},
+  // Initial Access
+  {id:"T1566",name:"Phishing",t:"ia",desc:"Delivery of a lure to obtain a foothold or credentials.",tele:"Mail gateway logs, URL rewrite clicks, attachment detonation verdicts.",det:"Correlate lookalike-sender + first-time-URL + credential form submission."},
+  {id:"T1190",name:"Exploit Public-Facing Application",t:"ia",desc:"Abuse of an internet-exposed service to gain entry.",tele:"WAF blocks, app error spikes, unusual POST payload sizes.",det:"Virtual patching + anomaly alert on exploit-pattern requests."},
+  {id:"T1078",name:"Valid Accounts",t:"ia",desc:"Use of legitimate credentials for access.",tele:"Auth logs, impossible-travel, new-device sign-in.",det:"Risk-based conditional access; alert on dormant-account reactivation."},
+  // Execution
+  {id:"T1059.001",name:"PowerShell",t:"exec",desc:"Script interpreter abuse for execution.",tele:"PowerShell script-block + module logging, EDR process tree.",det:"Alert on encoded commands, download cradles, and suspicious parent-child chains."},
+  {id:"T1059.003",name:"Windows Command Shell",t:"exec",desc:"cmd.exe based execution of operator actions.",tele:"Command-line process creation (4688), EDR telemetry.",det:"Baseline normal cmd usage per host role; alert on living-off-the-land chains."},
+  {id:"T1053.005",name:"Scheduled Task",t:"exec",desc:"Task scheduler used to run operator actions.",tele:"Task creation events (4698), EDR persistence telemetry.",det:"Alert on tasks created by non-admin processes or with hidden triggers."},
+  // Persistence
+  {id:"T1547",name:"Boot/Logon Autostart Execution",t:"persist",desc:"Autostart locations used to survive reboot.",tele:"Autoruns/registry run-key changes, EDR.",det:"Monitor run keys, startup folders, and WMI subscriptions for new entries."},
+  {id:"T1543.003",name:"Windows Service",t:"persist",desc:"New or modified service for persistence.",tele:"Service install events (7045), registry.",det:"Alert on service binaries in user-writable paths or unsigned binaries."},
+  {id:"T1078.004",name:"Valid Accounts: Cloud",t:"persist",desc:"Cloud identity retained for ongoing access.",tele:"Cloud audit logs, OAuth grant events, token issuance.",det:"Review consented apps and long-lived tokens; alert on new app registrations."},
+  // Privilege Escalation
+  {id:"T1068",name:"Exploitation for Privilege Escalation",t:"privesc",desc:"Local vulnerability abuse to raise privileges.",tele:"EDR exploit-guard events, crash telemetry.",det:"Patch posture monitoring; alert on exploit-primitive behaviors."},
+  {id:"T1548",name:"Abuse Elevation Control Mechanism",t:"privesc",desc:"Bypass of elevation controls (e.g. UAC).",tele:"EDR, process integrity-level transitions.",det:"Alert on auto-elevating binaries spawning child processes."},
+  // Stealth (TA0005)
+  {id:"T1027",name:"Obfuscated Files or Information",t:"stealth",desc:"Encoding/packing to blend in and evade inspection.",tele:"EDR static scan, entropy anomalies, AMSI.",det:"Score high-entropy script blocks and base64 density."},
+  {id:"T1055",name:"Process Injection",t:"stealth",desc:"Running code in the context of another process to hide.",tele:"EDR cross-process memory operations, suspicious handles.",det:"Alert on remote-thread creation and memory-protection changes."},
+  {id:"T1036",name:"Masquerading",t:"stealth",desc:"Naming/pathing artifacts to appear legitimate.",tele:"Process path + signature + hash reputation.",det:"Alert on system-binary names running from non-system paths."},
+  // Defense Impairment (TA0112)
+  {id:"T1562.001",name:"Impair Defenses: Disable or Modify Tools",t:"defimp",desc:"Turning off or weakening security controls.",tele:"EDR tamper-protection events, AV service state changes.",det:"Tamper-protection + immutable alert on security service stop."},
+  {id:"T1070",name:"Indicator Removal",t:"defimp",desc:"Clearing logs or artifacts to impair investigation.",tele:"Log-clear events (1102), journald/syslog gaps.",det:"Forward logs off-host in real time; alert on local log clears."},
+  {id:"T1489",name:"Service Stop (defensive)",t:"defimp",desc:"Stopping services that would hinder the operation.",tele:"Service stop events, monitoring heartbeat loss.",det:"Dead-man-switch alerting on monitoring agent silence."},
+  // Credential Access
+  {id:"T1003.001",name:"OS Credential Dumping: LSASS",t:"credacc",desc:"Extraction of credential material from memory.",tele:"LSASS access handles, EDR credential-theft detections.",det:"Credential Guard + alert on non-standard LSASS readers."},
+  {id:"T1110",name:"Brute Force",t:"credacc",desc:"Guessing or spraying credentials.",tele:"Auth failure volume (4625), lockout events.",det:"Alert on password-spray fan-out across many accounts from one source."},
+  {id:"T1555",name:"Credentials from Password Stores",t:"credacc",desc:"Harvesting stored secrets from browsers/vaults.",tele:"File/registry access to credential stores, EDR.",det:"Monitor access to known secret-store paths by unusual processes."},
+  // Discovery
+  {id:"T1087",name:"Account Discovery",t:"disc",desc:"Enumerating users and groups.",tele:"Directory query logs, LDAP volume.",det:"Alert on bulk directory enumeration from a single principal."},
+  {id:"T1018",name:"Remote System Discovery",t:"disc",desc:"Mapping other hosts on the network.",tele:"Internal network flow, ARP/SMB scanning.",det:"Baseline east-west traffic; alert on host-sweep patterns."},
+  {id:"T1082",name:"System Information Discovery",t:"disc",desc:"Collecting host and environment detail.",tele:"EDR process telemetry (systeminfo, whoami).",det:"Correlate recon-command bursts shortly after new access."},
+  // Lateral Movement
+  {id:"T1021.001",name:"Remote Services: RDP",t:"lat",desc:"Interactive remote session to move laterally.",tele:"Logon type 10 events, RDP gateway logs.",det:"Alert on RDP from unusual source to many destinations."},
+  {id:"T1021.002",name:"Remote Services: SMB/Admin Shares",t:"lat",desc:"Admin-share access for movement.",tele:"Share access (5140), named-pipe creation.",det:"Alert on ADMIN$/C$ access by non-admin workstations."},
+  {id:"T1570",name:"Lateral Tool Transfer",t:"lat",desc:"Moving operator tooling between hosts.",tele:"File writes to remote shares, EDR.",det:"Alert on executable drops over SMB to multiple hosts."},
+  // Collection
+  {id:"T1560",name:"Archive Collected Data",t:"coll",desc:"Staging and compressing data before exfil.",tele:"Archive-tool execution, large temp-file creation.",det:"Alert on bulk archiving in staging directories."},
+  {id:"T1005",name:"Data from Local System",t:"coll",desc:"Gathering target files from a host.",tele:"File-access telemetry, DLP classification hits.",det:"DLP on sensitive-data access by unusual processes."},
+  // Command & Control
+  {id:"T1071.001",name:"Application Layer Protocol: Web",t:"c2",desc:"HTTP(S) used for command and control.",tele:"Proxy logs, TLS JA3/JA4, beacon-interval analysis.",det:"Alert on periodic low-variance beacons to rare destinations."},
+  {id:"T1105",name:"Ingress Tool Transfer",t:"c2",desc:"Pulling additional tooling into the environment.",tele:"Proxy downloads, EDR file-creation from network.",det:"Alert on executable downloads from newly seen domains."},
+  {id:"T1573",name:"Encrypted Channel",t:"c2",desc:"Encrypting C2 to evade inspection.",tele:"TLS metadata, certificate anomalies.",det:"Flag self-signed certs and non-standard ports carrying TLS."},
+  // Exfiltration
+  {id:"T1041",name:"Exfiltration Over C2 Channel",t:"exfil",desc:"Sending data out through the existing C2.",tele:"Egress byte volume per flow, proxy logs.",det:"Alert on outbound data volume anomalies on C2 sessions."},
+  {id:"T1567",name:"Exfiltration Over Web Service",t:"exfil",desc:"Using a legitimate web service to move data out.",tele:"Proxy logs to cloud-storage/paste services.",det:"Policy + alert on uploads to unsanctioned storage."},
+  // Impact (simulated by default)
+  {id:"T1486",name:"Data Encrypted for Impact (simulated)",t:"impact",desc:"Ransomware-style impact. Simulated marker only in emulation.",tele:"Mass file-rename/modify rate, honeyfile triggers.",det:"Canary files + alert on high-rate file modification."},
+  {id:"T1490",name:"Inhibit System Recovery (simulated)",t:"impact",desc:"Removing recovery options. Simulated in emulation.",tele:"Shadow-copy deletion events, backup service changes.",det:"Alert on vssadmin/backup tampering; immutable backups."}
+];
+
+// Documented threat profiles (public, high-level). seeds = technique ids.
+const ACTORS = [
+  {id:"G0016",name:"APT29",alias:"Cozy Bear / Midnight Blizzard",theme:"State-linked espionage. Patient, identity-plane focused, strong operational stealth.",
+   tags:["Espionage","Cloud/Identity","Stealthy"],seeds:["T1566","T1078.004","T1528","T1071.001","T1070","T1027"],
+   note:"Characteristic emphasis on cloud identity abuse, token theft, and low-and-slow collection."},
+  {id:"G0046",name:"FIN7",alias:"Carbon Spider",theme:"Financially motivated. Social-engineering heavy, custom tooling, point-of-sale and finance targeting.",
+   tags:["Financial","Phishing","Hands-on"],seeds:["T1566","T1059.001","T1055","T1003.001","T1021.001","T1041"],
+   note:"Known for well-crafted lures and rapid hands-on-keyboard post-access activity."},
+  {id:"G0032",name:"Lazarus Group",alias:"Hidden Cobra",theme:"State-linked, dual espionage and financial motives. Broad toolset, supply-chain and destructive capability.",
+   tags:["State","Financial","Destructive"],seeds:["T1566","T1105","T1486","T1490","T1071.001","T1027"],
+   note:"Spans espionage to destructive/financial operations; include impact only as simulated."},
+  {id:"G0007",name:"APT28",alias:"Fancy Bear",theme:"State-linked espionage. Credential harvesting, government and defense targeting.",
+   tags:["Espionage","Credential-theft"],seeds:["T1566","T1110","T1003.001","T1018","T1071.001","T1041"],
+   note:"Credential access and persistent collection are the signature of this profile."},
+  {id:"G1015",name:"Scattered Spider",alias:"UNC3944",theme:"Financially motivated. Help-desk social engineering, MFA fatigue, SaaS and identity abuse.",
+   tags:["Financial","Social-eng","Identity"],seeds:["T1078","T1621","T1556","T1021.001","T1567","T1486"],
+   note:"Heavy on human-layer attacks against identity and help-desk processes."}
+];
+
+const ROE = [
+  {k:"auth",t:"Signed authorization in place",d:"Written approval naming systems, dates, and operators."},
+  {k:"deconflict",t:"De-confliction contact + abort channel",d:"Named stop authority and out-of-band comms for abort."},
+  {k:"scopecheck",t:"Scope boundaries verified",d:"Production excluded unless explicitly authorized; data handling defined."},
+  {k:"impactsim",t:"Destructive impact simulated only",d:"No real encryption/deletion without separate written approval."},
+  {k:"evidence",t:"Evidence & logging plan set",d:"Operator action log and artifact retention defined for the debrief."},
+  {k:"cleanup",t:"Cleanup & restoration plan ready",d:"Rollback of persistence, accounts, and artifacts documented."}
+];
+
+const App = {
+  state:{ plan:[], roe:{}, actor:null, meta:{name:"",obj:"",scope:"",window:""} },
+  KEY:"atlas_aep_v1",
+
+  init(){
+    this.load();
+    this.bindTabs();
+    this.renderActors();
+    this.renderROE();
+    this.renderMatrix();
+    this.renderPlan();
+    this.bindScope();
+    this.refresh();
+  },
+  bindTabs(){
+    document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById(b.dataset.v).classList.add('active');
+    });
+  },
+  bindScope(){
+    ['name','obj','scope','window'].forEach(f=>{
+      const el=document.getElementById('e_'+f);
+      el.value=this.state.meta[f]||'';
+      el.oninput=()=>{this.state.meta[f]=el.value;this.save();};
+    });
+  },
+  renderActors(){
+    document.getElementById('actorGrid').innerHTML = ACTORS.map(a=>`
+      <div class="actor ${this.state.actor===a.id?'sel':''}" onclick="App.pickActor('${a.id}')">
+        <div class="n">${a.name}</div>
+        <div class="code">${a.id} &bull; ${a.alias}</div>
+        <div class="meta">${a.theme}</div>
+        <div class="chips">${a.tags.map(t=>`<span class="chip n">${t}</span>`).join('')}</div>
+        <div style="margin-top:10px"><button class="btn sm" onclick="event.stopPropagation();App.seedFromActor('${a.id}')">Seed plan +${a.seeds.filter(s=>TECHS.find(x=>x.id===s)).length}</button></div>
+      </div>`).join('');
+  },
+  pickActor(id){ this.state.actor = this.state.actor===id?null:id; this.save(); this.renderActors(); },
+  seedFromActor(id){
+    const a=ACTORS.find(x=>x.id===id); let added=0;
+    a.seeds.forEach(s=>{ if(TECHS.find(x=>x.id===s) && !this.inPlan(s)){ this.addTech(s,true); added++; } });
+    this.state.actor=id; this.save(); this.renderActors(); this.renderMatrix(); this.renderPlan(); this.refresh();
+    this.toast(added?`Seeded ${added} techniques from ${a.name}`:`${a.name} techniques already in plan`);
+  },
+  renderROE(){
+    document.getElementById('roeList').innerHTML = ROE.map(r=>`
+      <li>
+        <span class="cb ${this.state.roe[r.k]?'on':''}" onclick="App.toggleROE('${r.k}')">${this.state.roe[r.k]?'&#10003;':''}</span>
+        <div><div class="ct">${r.t}</div><div class="cd">${r.d}</div></div>
+      </li>`).join('');
+  },
+  toggleROE(k){ this.state.roe[k]=!this.state.roe[k]; this.save(); this.renderROE(); this.refresh(); },
+
+  inPlan(id){ return this.state.plan.some(p=>p.id===id); },
+  addTech(id,silent){
+    if(this.inPlan(id)) return;
+    const t=TECHS.find(x=>x.id===id); if(!t) return;
+    this.state.plan.push({id:t.id,proc:"",priority:"medium"});
+    if(!silent){ this.save(); this.renderMatrix(); this.renderPlan(); this.refresh(); }
+  },
+  removeTech(id){ this.state.plan=this.state.plan.filter(p=>p.id!==id); this.save(); this.renderMatrix(); this.renderPlan(); this.refresh(); },
+  toggleTech(id){ this.inPlan(id)?this.removeTech(id):this.addTech(id); },
+
+  renderMatrix(){
+    const q=(document.getElementById('filter').value||'').toLowerCase();
+    const wrap=document.getElementById('matrixWrap');
+    wrap.innerHTML = TACTICS.map(tac=>{
+      const ts=TECHS.filter(t=>t.t===tac.k && (!q || (t.name+t.id).toLowerCase().includes(q)));
+      const inCount=TECHS.filter(t=>t.t===tac.k && this.inPlan(t.id)).length;
+      return `<div class="col">
+        <div class="ch"><div>${tac.name}<div class="id">${tac.id}</div></div>
+          <span class="cnt ${inCount?'':'z'}">${inCount}</span></div>
+        <div class="cell">
+          ${ts.map(t=>`<div class="tech ${this.inPlan(t.id)?'inplan':''}" onclick="App.toggleTech('${t.id}')" oncontextmenu="App.detail(event,'${t.id}')">
+              <div class="tid">${t.id}</div><div class="tn">${t.name}</div></div>`).join('') || '<div style="font-size:10px;color:var(--faint);text-align:center;padding:8px">—</div>'}
+        </div></div>`;
+    }).join('');
+    document.getElementById('matrixCount').textContent = this.state.plan.length+' in plan';
+  },
+  detail(e,id){
+    e.preventDefault();
+    const t=TECHS.find(x=>x.id===id);
+    document.getElementById('modalBox').innerHTML=`
+      <h3><span class="tid-b">${t.id}</span> ${t.name}</h3>
+      <p>${t.desc}</p>
+      <div class="blk tele" style="margin-top:8px"><div class="lbl">Expected telemetry (blue bridge)</div>${t.tele}</div>
+      <div class="blk det" style="margin-top:8px"><div class="lbl">Detection opportunity</div>${t.det}</div>
+      <div class="row" style="margin-top:16px;justify-content:flex-end">
+        <button class="btn ghost sm" onclick="App.closeModal()">Close</button>
+        <button class="btn sm" onclick="App.addTech('${t.id}');App.closeModal()">${this.inPlan(t.id)?'In plan':'Add to plan'}</button>
+      </div>`;
+    document.getElementById('modal').classList.add('open');
+  },
+  closeModal(){ document.getElementById('modal').classList.remove('open'); },
+
+  renderPlan(){
+    const list=document.getElementById('planList');
+    if(!this.state.plan.length){
+      list.innerHTML=`<div class="empty"><div class="ico">&#9671;</div>No techniques planned yet. Add them from the <b>TTP Matrix</b> or seed from a <b>Threat Profile</b>.</div>`;
+    } else {
+      // order by tactic sequence
+      const order={}; TACTICS.forEach((t,i)=>order[t.k]=i);
+      const sorted=[...this.state.plan].sort((a,b)=>{
+        const ta=TECHS.find(x=>x.id===a.id).t, tb=TECHS.find(x=>x.id===b.id).t;
+        return order[ta]-order[tb];
+      });
+      list.innerHTML=sorted.map(p=>{
+        const t=TECHS.find(x=>x.id===p.id);
+        const tac=TACTICS.find(x=>x.k===t.t);
+        return `<div class="plan-item">
+          <div class="top">
+            <div><div class="tt"><span class="tid">${t.id}</span>${t.name}</div>
+              <div class="tac">${tac.name} &bull; ${tac.id}</div></div>
+            <div class="row">
+              <select class="x" style="width:auto;padding:5px 8px;font-size:11px" onchange="App.setPriority('${p.id}',this.value)">
+                ${['high','medium','low'].map(v=>`<option value="${v}" ${p.priority===v?'selected':''}>${v} priority</option>`).join('')}
+              </select>
+              <button class="x-del" onclick="App.removeTech('${p.id}')">Remove</button>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="blk tele"><div class="lbl">Expected telemetry (blue bridge)</div>${t.tele}</div>
+            <div class="blk det"><div class="lbl">Detection opportunity</div>${t.det}</div>
+          </div>
+          <label class="f" style="margin-top:10px">Procedure note (high-level scope, no payloads)</label>
+          <textarea class="x" placeholder="How this behavior will be emulated within scope, success criteria, and the de-confliction note." onchange="App.setProc('${p.id}',this.value)">${p.proc||''}</textarea>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('planHdr').textContent=this.state.plan.length+' techniques';
+  },
+  setPriority(id,v){ const p=this.state.plan.find(x=>x.id===id); if(p){p.priority=v;this.save();} },
+  setProc(id,v){ const p=this.state.plan.find(x=>x.id===id); if(p){p.proc=v;this.save();} },
+  clearPlan(){ if(confirm('Clear all planned techniques?')){ this.state.plan=[]; this.save(); this.renderMatrix(); this.renderPlan(); this.refresh(); } },
+
+  refresh(){
+    const n=this.state.plan.length;
+    const tacs=new Set(this.state.plan.map(p=>TECHS.find(x=>x.id===p.id).t));
+    const safe=Object.values(this.state.roe).filter(Boolean).length;
+    document.getElementById('s_tech').textContent=n;
+    document.getElementById('s_tac').innerHTML=tacs.size+'<span style="font-size:16px;color:var(--faint)">/15</span>';
+    const cov=Math.round(tacs.size/15*100);
+    document.getElementById('s_cov').textContent=cov+'%';
+    document.getElementById('s_safe').innerHTML=safe+'<span style="font-size:16px;color:var(--faint)">/6</span>';
+    document.getElementById('barCov').style.width=cov+'%';
+    // readiness list
+    document.getElementById('readinessList').innerHTML = TACTICS.map(t=>{
+      const c=this.state.plan.filter(p=>TECHS.find(x=>x.id===p.id).t===t.k).length;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px">
+        <span style="color:${c?'var(--text)':'var(--faint)'}">${t.name}</span>
+        <span style="font-family:var(--mono);color:${c?'var(--red2)':'var(--faint)'}">${c?('&times;'+c):'—'}</span></div>`;
+    }).join('');
+  },
+
+  exportJSON(){
+    const out={
+      artifact:"ATLAS Adversary Emulation Plan",
+      author:"Christina Apriani",
+      attack_version:"v20",
+      generated:new Date().toISOString(),
+      engagement:this.state.meta,
+      rules_of_engagement:ROE.map(r=>({control:r.t,confirmed:!!this.state.roe[r.k]})),
+      threat_profile:this.state.actor?ACTORS.find(a=>a.id===this.state.actor):null,
+      techniques:this.state.plan.map(p=>{
+        const t=TECHS.find(x=>x.id===p.id), tac=TACTICS.find(x=>x.k===t.t);
+        return {id:t.id,name:t.name,tactic:tac.name,tactic_id:tac.id,priority:p.priority,
+          procedure_note:p.proc,expected_telemetry:t.tele,detection_opportunity:t.det};
+      })
+    };
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=(this.state.meta.name||'emulation-plan').replace(/\s+/g,'_')+'.json'; a.click();
+    this.toast('Emulation plan exported');
+  },
+
+  toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
+    clearTimeout(this._t); this._t=setTimeout(()=>t.classList.remove('show'),2400); },
+  save(){ try{localStorage.setItem(this.KEY,JSON.stringify(this.state));}catch(e){} },
+  load(){ try{const s=localStorage.getItem(this.KEY); if(s)this.state=Object.assign(this.state,JSON.parse(s));}catch(e){} }
+};
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') App.closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') App.closeModal(); });
+App.init();
+</script>
+</body>
+</html>

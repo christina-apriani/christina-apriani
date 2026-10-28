@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEGIS — Incident Response Command Center</title>
+<meta name="author" content="Christina Apriani">
+<meta name="description" content="Incident response command center built on the NIST SP 800-61 lifecycle. Live playbooks, triage, timeline reconstruction, communications tracking, metrics, and post-incident review.">
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0d131b; --panel:#0f1620; --panel2:#121a26;
+    --line:#1d2836; --line2:#273548; --text:#e6f0fa; --muted:#8597ac; --faint:#566477;
+    --blue:#2e9bff; --blue2:#5fb4ff; --cyan:#22d3ee; --blue-dim:#123049; --glow:rgba(46,155,255,.16);
+    --green:#2ee6a0; --amber:#ffc53d; --red:#ff5d6c; --orange:#ff8a3d;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Consolas,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; --r:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1100px 600px at 80% -12%, var(--glow), transparent 60%),linear-gradient(180deg,#070b10,#05080c);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--blue);color:#021018}
+  button{font-family:inherit;cursor:pointer} input,textarea,select{font-family:inherit}
+  .wrap{max-width:1500px;margin:0 auto;padding:0 20px 80px}
+  header{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(7,11,16,.95),rgba(7,11,16,.78));border-bottom:1px solid var(--line)}
+  .hbar{max-width:1500px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(145deg,var(--blue),#1763b8);box-shadow:0 0 22px var(--glow);font-weight:800;font-size:18px;color:#fff;font-family:var(--mono)}
+  .brand h1{font-size:16px;letter-spacing:.3px} .brand .sub{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px}
+  .tag{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:30px;border:1px solid var(--line2);color:var(--muted);background:var(--panel)}
+  .pill.live{color:var(--red);border-color:rgba(255,93,108,.4)}
+  .pill.live::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:6px;box-shadow:0 0 8px var(--red);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 -20px 22px;padding:0 20px;overflow-x:auto}
+  .tab{padding:13px 16px;color:var(--muted);font-weight:600;font-size:13px;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--text)} .tab.active{color:var(--blue2);border-bottom-color:var(--blue)}
+  .view{display:none;animation:fade .25s} .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .grid{display:grid;gap:18px} .cols-2{grid-template-columns:1fr 1fr} .cols-2b{grid-template-columns:.9fr 1.1fr} .cols-3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:980px){.cols-2,.cols-2b,.cols-3{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h2 .bar{width:3px;height:14px;background:var(--blue);border-radius:2px;box-shadow:0 0 8px var(--glow)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:16px;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;right:-20px;top:-20px;width:70px;height:70px;border-radius:50%;background:var(--glow);filter:blur(10px)}
+  .stat .k{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1} .stat .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:8px} .stat .d{font-size:11px;color:var(--faint);margin-top:4px}
+  label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:14px 0 6px}
+  input.x,textarea.x,select.x{width:100%;background:var(--bg2);border:1px solid var(--line2);color:var(--text);padding:10px 12px;border-radius:8px;font-size:13px;outline:none;transition:.15s}
+  input.x:focus,textarea.x:focus,select.x:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--glow)}
+  textarea.x{resize:vertical;min-height:60px}
+  .btn{background:linear-gradient(145deg,var(--blue),#1763b8);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;box-shadow:0 2px 14px var(--glow);transition:.15s}
+  .btn:hover{transform:translateY(-1px)} .btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line2);box-shadow:none}
+  .btn.ghost:hover{border-color:var(--blue)} .btn.sm{padding:6px 12px;font-size:12px}
+  .btn.danger{background:linear-gradient(145deg,var(--red),#c0303c)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .sev{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px}
+  .sev.s1{background:rgba(255,93,108,.15);color:var(--red);border:1px solid rgba(255,93,108,.4)}
+  .sev.s2{background:rgba(255,138,61,.15);color:var(--orange);border:1px solid rgba(255,138,61,.4)}
+  .sev.s3{background:rgba(255,197,61,.15);color:var(--amber);border:1px solid rgba(255,197,61,.4)}
+  .sev.s4{background:rgba(46,230,160,.12);color:var(--green);border:1px solid rgba(46,230,160,.35)}
+  .phase{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:6px;background:var(--bg2);border:1px solid var(--line2);color:var(--muted)}
+  .inc{background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:14px;margin-bottom:12px;border-left:3px solid var(--line2);cursor:pointer;transition:.15s}
+  .inc:hover{border-left-color:var(--blue);transform:translateX(2px)}
+  .inc.s1{border-left-color:var(--red)} .inc.s2{border-left-color:var(--orange)} .inc.s3{border-left-color:var(--amber)} .inc.s4{border-left-color:var(--green)}
+  .inc.closed{opacity:.6}
+  .inc .it{font-weight:700;font-size:15px} .inc .im{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:3px}
+  /* lifecycle stepper */
+  .lifecycle{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+  .lc{flex:1;min-width:120px;text-align:center;padding:10px 8px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;font-size:11px;position:relative}
+  .lc.done{border-color:var(--green);color:var(--green)} .lc.active{border-color:var(--blue);background:var(--blue-dim);color:var(--blue2);font-weight:700}
+  .lc .pn{font-family:var(--mono);font-size:9px;color:var(--faint);display:block;margin-top:3px}
+  /* playbook steps */
+  .pbphase{margin-bottom:16px}
+  .pbphase .ph{font-size:12px;font-weight:700;color:var(--blue2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .pbphase .ph .cc{font-family:var(--mono);font-size:10px;color:var(--faint)}
+  .step{display:flex;gap:10px;align-items:flex-start;padding:10px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;margin-bottom:7px;transition:.12s}
+  .step.on{border-color:var(--green);background:rgba(46,230,160,.05)}
+  .cb{width:20px;height:20px;border:1px solid var(--line2);border-radius:6px;flex:0 0 auto;margin-top:1px;display:grid;place-items:center;cursor:pointer;font-size:12px;color:transparent;transition:.12s}
+  .cb.on{background:var(--green);border-color:var(--green);color:#042018}
+  .step .sx{font-size:13px} .step.on .sx{color:var(--muted);text-decoration:line-through}
+  .step .sd{font-size:11px;color:var(--faint);margin-top:2px}
+  /* timeline */
+  .tl{position:relative;padding-left:22px}
+  .tl::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--line2)}
+  .tle{position:relative;margin-bottom:12px}
+  .tle::before{content:"";position:absolute;left:-19px;top:4px;width:11px;height:11px;border-radius:50%;background:var(--blue);border:2px solid var(--bg);box-shadow:0 0 8px var(--glow)}
+  .tle .tt{font-family:var(--mono);font-size:10px;color:var(--faint)} .tle .tx{font-size:13px;margin-top:1px}
+  .comm{background:var(--bg2);border:1px solid var(--line2);border-radius:7px;padding:9px 11px;margin-bottom:7px;font-size:12px}
+  .comm .ch{font-family:var(--mono);font-size:10px;color:var(--blue2);margin-bottom:2px}
+  .empty{text-align:center;color:var(--faint);padding:40px;font-size:13px}
+  .pbcard{background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:16px;margin-bottom:12px}
+  .pbcard .pt{font-weight:700;font-size:15px;display:flex;align-items:center;gap:9px}
+  .pbcard .pd{font-size:12px;color:var(--muted);margin-top:4px}
+  pre.report{background:#060a0f;border:1px solid var(--line2);border-radius:9px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:560px;overflow:auto}
+  footer{margin-top:40px;padding:22px 0;border-top:1px solid var(--line);color:var(--faint);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  footer b{color:var(--muted)} .sig{font-family:var(--mono)}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel2);border:1px solid var(--blue);color:var(--text);padding:12px 20px;border-radius:10px;font-size:13px;box-shadow:0 10px 40px rgba(0,0,0,.6);transition:.3s;z-index:200;opacity:0}
+  #toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .modal{position:fixed;inset:0;background:rgba(3,5,8,.75);backdrop-filter:blur(4px);z-index:150;display:none;place-items:center;padding:20px}
+  .modal.open{display:grid}
+  .modal .box{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line2);border-radius:14px;max-width:520px;width:100%;padding:24px}
+  .modal h3{font-size:16px;margin-bottom:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div><h1>AEGIS &middot; Incident Response Command Center</h1>
+        <div class="sub">NIST SP 800-61 LIFECYCLE &bull; LIVE PLAYBOOKS</div></div>
+    </div>
+    <div class="tag">
+      <span class="pill live" id="activePill">0 ACTIVE</span>
+      <button class="btn sm" onclick="App.openNew()">Declare Incident</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button class="tab active" data-v="dash">Dashboard</button>
+    <button class="tab" data-v="incidents">Incidents</button>
+    <button class="tab" data-v="active">Active Response</button>
+    <button class="tab" data-v="playbooks">Playbook Library</button>
+    <button class="tab" data-v="pir">Post-Incident Review</button>
+  </nav>
+
+  <!-- DASH -->
+  <section class="view active" id="dash">
+    <div class="stats">
+      <div class="stat"><div class="k" id="s_active" style="color:var(--red)">0</div><div class="l">Active Incidents</div><div class="d">open now</div></div>
+      <div class="stat"><div class="k" id="s_sev1" style="color:var(--orange)">0</div><div class="l">SEV-1 / SEV-2</div><div class="d">high priority</div></div>
+      <div class="stat"><div class="k" id="s_mttr" style="color:var(--blue2)">—</div><div class="l">Median Time to Resolve</div><div class="d">closed incidents</div></div>
+      <div class="stat"><div class="k" id="s_closed" style="color:var(--green)">0</div><div class="l">Resolved</div><div class="d">lifetime</div></div>
+    </div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2><span class="bar"></span>Incident Response Lifecycle</h2>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:6px">NIST SP 800-61r2 &mdash; distribution of open incidents by phase.</p>
+        <div id="phaseBars"></div>
+        <div style="margin-top:14px;font-size:12px;color:var(--faint);line-height:1.7">
+          Preparation is continuous. Detection &amp; Analysis confirms and scopes. Containment, Eradication &amp; Recovery
+          removes the threat and restores service. Post-Incident Activity turns the event into durable improvement.
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="bar"></span>Active Incident Queue</h2>
+        <div id="dashQueue"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INCIDENTS -->
+  <section class="view" id="incidents">
+    <div class="card">
+      <h2><span class="bar"></span>Incident Register</h2>
+      <div class="row" style="margin-bottom:14px">
+        <select class="x" id="filtStatus" style="max-width:170px" onchange="App.renderIncidents()">
+          <option value="">All incidents</option><option value="open">Open only</option><option value="closed">Closed only</option>
+        </select>
+        <button class="btn sm" onclick="App.openNew()">+ Declare incident</button>
+      </div>
+      <div id="incList"></div>
+    </div>
+  </section>
+
+  <!-- ACTIVE -->
+  <section class="view" id="active">
+    <div id="activeWrap"><div class="card"><div class="empty">No incident selected. Open one from the <b>Incidents</b> tab, or declare a new one.</div></div></div>
+  </section>
+
+  <!-- PLAYBOOKS -->
+  <section class="view" id="playbooks">
+    <div class="card">
+      <h2><span class="bar"></span>Response Playbook Library</h2>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Each playbook is a phased sequence of response actions. Declaring an incident instantiates its playbook as a live checklist.</p>
+      <div id="pbList"></div>
+    </div>
+  </section>
+
+  <!-- PIR -->
+  <section class="view" id="pir">
+    <div class="card">
+      <h2><span class="bar"></span>Post-Incident Review Generator</h2>
+      <div class="row" style="margin-bottom:14px">
+        <select class="x" id="pirSelect" style="max-width:320px" onchange="App.buildPIR()"></select>
+        <button class="btn ghost sm" onclick="App.copyPIR()">Copy</button>
+      </div>
+      <pre class="report" id="pirOut">Select a closed incident to generate its review.</pre>
+    </div>
+  </section>
+
+  <footer>
+    <div>Built by <b class="sig">Christina Apriani</b> &bull; AEGIS Incident Response Command Center</div>
+    <div class="sig">NIST SP 800-61 &bull; SANS IR &bull; ATT&amp;CK v20</div>
+  </footer>
+</div>
+
+<div id="toast"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+"use strict";
+/* AEGIS — Incident Response Command Center. Author: Christina Apriani.
+   Response playbooks contain defensive actions (isolate, preserve, recover). No offensive content. */
+
+const PHASES=[
+  {k:"prep",n:"Preparation"},
+  {k:"detect",n:"Detection & Analysis"},
+  {k:"contain",n:"Containment, Eradication & Recovery"},
+  {k:"post",n:"Post-Incident Activity"}
+];
+const SEV={s1:"SEV-1 Critical",s2:"SEV-2 High",s3:"SEV-3 Medium",s4:"SEV-4 Low"};
+
+const PLAYBOOKS={
+  ransomware:{name:"Ransomware / Destructive Impact",icon:"🔒",tech:"T1486, T1490",
+    desc:"Encryption or destruction of data for impact. Speed of containment is decisive.",
+    steps:{
+      detect:["Confirm scope: which hosts, shares, and backups are affected","Identify patient zero and initial access vector","Preserve a memory and disk image of an affected host for forensics","Classify severity and declare the incident to leadership"],
+      contain:["Isolate affected hosts from the network (do not power off before imaging)","Disable compromised accounts and rotate privileged credentials","Block known C2 and malicious indicators at the perimeter","Verify backup integrity and that backups are offline / immutable","Eradicate persistence and malware from confirmed-clean images","Restore from validated clean backups in a staged, monitored manner","Confirm services restored and monitoring re-established"],
+      post:["Document root cause and the full intrusion timeline","Capture the detection gaps that delayed discovery","Convert gaps into new detection rules and control changes","Brief leadership and close the incident"]
+    }},
+  bec:{name:"Business Email Compromise",icon:"📧",tech:"T1566, T1078",
+    desc:"Account takeover and fraudulent email activity, often targeting finance.",
+    steps:{
+      detect:["Confirm the compromised mailbox and the fraudulent activity","Review sign-in logs for impossible travel and new devices","Identify any mailbox rules created to hide activity","Determine whether any payment or data was diverted"],
+      contain:["Reset the account password and revoke active sessions and tokens","Enforce or re-register MFA on the account","Remove malicious inbox and forwarding rules","Notify finance and halt any pending fraudulent transfers","Search for and contain lateral phishing sent from the account"],
+      post:["Trace how credentials were obtained and close that path","Review conditional-access and MFA posture org-wide","Record lessons and update the user-awareness program","Close the incident with finance sign-off"]
+    }},
+  exfil:{name:"Data Exfiltration",icon:"📤",tech:"T1041, T1567",
+    desc:"Unauthorized movement of sensitive data out of the environment.",
+    steps:{
+      detect:["Confirm what data left, the volume, and the destination","Identify the account and host used for exfiltration","Preserve proxy, DLP, and endpoint evidence","Classify data sensitivity and regulatory exposure"],
+      contain:["Block the exfiltration destination and revoke the account","Isolate the source host and capture forensic images","Close the data-access path and tighten DLP policy","Engage legal and privacy for breach-notification assessment"],
+      post:["Establish the full scope of affected records","Complete regulatory and customer notifications as required","Strengthen egress monitoring and data-access controls","Document and close"]
+    }},
+  phish:{name:"Phishing Campaign",icon:"🎣",tech:"T1566",
+    desc:"Malicious email campaign targeting the workforce for credentials or malware.",
+    steps:{
+      detect:["Confirm the lure, sender infrastructure, and payload or landing page","Determine how many recipients received and clicked","Check for credential submission or malware execution"],
+      contain:["Pull the malicious email from all mailboxes","Block sender domains, URLs, and payload hashes","Reset credentials for any user who submitted them","Isolate any host that executed the payload"],
+      post:["Measure click and report rates for the awareness program","Tune the mail gateway on the observed indicators","Record and close"]
+    }},
+  acct:{name:"Account Compromise",icon:"🔑",tech:"T1078, T1110",
+    desc:"Unauthorized use of a legitimate account, including privileged escalation.",
+    steps:{
+      detect:["Confirm the compromised account and the anomalous activity","Review authentication and privilege-change logs","Identify any new persistence (accounts, keys, rules)","Assess lateral movement from the account"],
+      contain:["Disable the account and revoke all sessions and tokens","Rotate secrets the account could access","Remove attacker-created accounts, keys, and persistence","Contain any hosts reached from the account"],
+      post:["Trace the initial credential compromise and close it","Review privileged-access and just-in-time controls","Document and close"]
+    }}
+};
+
+const App={
+  state:{incidents:[]}, cur:null, KEY:"aegis_ir_v1",
+  init(){ this.load(); this.bindTabs(); this.renderPlaybooks(); this.renderAll(); },
+  bindTabs(){ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>this.tab(b.dataset.v)); },
+  tab(v){ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.v===v));
+    document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));
+    if(v==='active')this.renderActive(); if(v==='pir')this.fillPIRSelect(); },
+
+  openNew(){
+    document.getElementById('modalBox').innerHTML=`
+      <h3>Declare Incident</h3>
+      <label class="f">Incident title</label>
+      <input class="x" id="m_title" placeholder="e.g. Finance mailbox compromise">
+      <label class="f">Playbook</label>
+      <select class="x" id="m_pb">${Object.keys(PLAYBOOKS).map(k=>`<option value="${k}">${PLAYBOOKS[k].icon} ${PLAYBOOKS[k].name}</option>`).join('')}</select>
+      <label class="f">Severity</label>
+      <select class="x" id="m_sev">${Object.keys(SEV).map(k=>`<option value="${k}">${SEV[k]}</option>`).join('')}</select>
+      <div class="row" style="margin-top:18px;justify-content:flex-end">
+        <button class="btn ghost sm" onclick="App.closeModal()">Cancel</button>
+        <button class="btn sm" onclick="App.createIncident()">Declare &amp; open</button>
+      </div>`;
+    document.getElementById('modal').classList.add('open');
+  },
+  createIncident(){
+    const title=document.getElementById('m_title').value.trim()||'Untitled incident';
+    const pb=document.getElementById('m_pb').value, sev=document.getElementById('m_sev').value;
+    const now=Date.now();
+    const inc={id:'INC-'+String(this.state.incidents.length+1).padStart(4,'0'),title,pb,sev,
+      status:'open',phase:'detect',steps:{},timeline:[{t:now,x:'Incident declared ('+SEV[sev]+')'}],comms:[],
+      detectedAt:now,containedAt:null,resolvedAt:null,created:now};
+    this.state.incidents.unshift(inc); this.cur=inc.id; this.save(); this.closeModal();
+    this.renderAll(); this.tab('active'); this.toast('Incident '+inc.id+' declared');
+  },
+  closeModal(){ document.getElementById('modal').classList.remove('open'); },
+
+  renderAll(){ this.renderDash(); this.renderIncidents(); this.renderActive(); },
+
+  renderDash(){
+    const inc=this.state.incidents, open=inc.filter(i=>i.status==='open');
+    document.getElementById('s_active').textContent=open.length;
+    document.getElementById('s_sev1').textContent=open.filter(i=>i.sev==='s1'||i.sev==='s2').length;
+    document.getElementById('s_closed').textContent=inc.filter(i=>i.status==='closed').length;
+    document.getElementById('activePill').textContent=open.length+' ACTIVE';
+    // MTTR median
+    const durs=inc.filter(i=>i.resolvedAt).map(i=>i.resolvedAt-i.detectedAt).sort((a,b)=>a-b);
+    document.getElementById('s_mttr').textContent=durs.length?this.fmtDur(durs[Math.floor(durs.length/2)]):'—';
+    // phase bars
+    const pc={}; PHASES.forEach(p=>pc[p.k]=0); open.forEach(i=>pc[i.phase]++);
+    const max=Math.max(1,...Object.values(pc));
+    document.getElementById('phaseBars').innerHTML=PHASES.map(p=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px">
+        <span style="width:180px;color:var(--muted)">${p.n}</span>
+        <div style="flex:1;height:18px;background:var(--bg2);border:1px solid var(--line2);border-radius:5px;overflow:hidden">
+          <i style="display:block;height:100%;width:${pc[p.k]/max*100}%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></i></div>
+        <span style="width:22px;text-align:right;font-family:var(--mono)">${pc[p.k]}</span></div>`).join('');
+    // queue
+    const q=document.getElementById('dashQueue');
+    q.innerHTML = open.length? open.map(i=>this.incCard(i)).join('') : '<div class="empty">No active incidents. All clear.</div>';
+  },
+  incCard(i){
+    const pb=PLAYBOOKS[i.pb];
+    return `<div class="inc ${i.sev} ${i.status==='closed'?'closed':''}" onclick="App.openIncident('${i.id}')">
+      <div class="row" style="justify-content:space-between">
+        <div class="it">${pb.icon} ${this.esc(i.title)}</div><span class="sev ${i.sev}">${SEV[i.sev]}</span></div>
+      <div class="im">${i.id} &bull; ${pb.name} &bull; <span class="phase">${PHASES.find(p=>p.k===i.phase).n}</span> &bull; ${this.ago(i.created)}</div>
+    </div>`;
+  },
+  renderIncidents(){
+    const f=document.getElementById('filtStatus').value;
+    let inc=[...this.state.incidents]; if(f)inc=inc.filter(i=>i.status===(f==='open'?'open':'closed'));
+    document.getElementById('incList').innerHTML = inc.length? inc.map(i=>this.incCard(i)).join('') : '<div class="empty">No incidents. Declare one to begin.</div>';
+  },
+  openIncident(id){ this.cur=id; this.tab('active'); },
+
+  renderActive(){
+    const wrap=document.getElementById('activeWrap');
+    const i=this.state.incidents.find(x=>x.id===this.cur);
+    if(!i){ wrap.innerHTML='<div class="card"><div class="empty">No incident selected.</div></div>'; return; }
+    const pb=PLAYBOOKS[i.pb];
+    const total=Object.values(pb.steps).flat().length;
+    const done=Object.values(i.steps).filter(Boolean).length;
+    const phaseIdx=PHASES.findIndex(p=>p.k===i.phase);
+    wrap.innerHTML=`
+      <div class="card" style="margin-bottom:18px">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:19px;font-weight:700">${pb.icon} ${this.esc(i.title)}</div>
+            <div style="font-size:12px;color:var(--faint);font-family:var(--mono);margin-top:4px">${i.id} &bull; ${pb.name} &bull; ATT&CK ${pb.tech}</div>
+          </div>
+          <div class="row">
+            <span class="sev ${i.sev}">${SEV[i.sev]}</span>
+            ${i.status==='open'?`<button class="btn sm" onclick="App.resolve('${i.id}')">Resolve incident</button>`:`<span class="phase" style="color:var(--green)">CLOSED</span>`}
+          </div>
+        </div>
+        <div class="lifecycle">
+          ${PHASES.map((p,idx)=>`<div class="lc ${idx<phaseIdx?'done':''} ${idx===phaseIdx&&i.status==='open'?'active':''}" onclick="App.setPhase('${i.id}','${p.k}')">
+            ${p.n}<span class="pn">phase ${idx+1}</span></div>`).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">Response progress: <b style="color:var(--text)">${done}/${total}</b> steps &bull; declared ${this.ago(i.created)}${i.resolvedAt?' &bull; resolved in '+this.fmtDur(i.resolvedAt-i.detectedAt):''}</div>
+      </div>
+      <div class="grid cols-2b">
+        <div>
+          <div class="card">
+            <h2><span class="bar"></span>Live Playbook</h2>
+            ${PHASES.filter(p=>pb.steps[p.k]).map(p=>`
+              <div class="pbphase">
+                <div class="ph">${p.n}<span class="cc">${(pb.steps[p.k]||[]).filter((_,idx)=>i.steps[p.k+idx]).length}/${(pb.steps[p.k]||[]).length}</span></div>
+                ${(pb.steps[p.k]||[]).map((s,idx)=>{ const key=p.k+idx; const on=!!i.steps[key];
+                  return `<div class="step ${on?'on':''}">
+                    <span class="cb ${on?'on':''}" onclick="App.toggleStep('${i.id}','${key}')">${on?'✓':''}</span>
+                    <div><div class="sx">${s}</div></div></div>`;}).join('')}
+              </div>`).join('')}
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:18px">
+            <h2><span class="bar"></span>Incident Timeline</h2>
+            <div class="row" style="margin-bottom:12px">
+              <input class="x" id="tlInput" placeholder="Add a timeline entry..." style="flex:1" onkeydown="if(event.key==='Enter')App.addTL('${i.id}')">
+              <button class="btn sm" onclick="App.addTL('${i.id}')">Add</button>
+            </div>
+            <div class="tl">${[...i.timeline].reverse().map(e=>`
+              <div class="tle"><div class="tt">${new Date(e.t).toLocaleString()}</div><div class="tx">${this.esc(e.x)}</div></div>`).join('')}</div>
+          </div>
+          <div class="card">
+            <h2><span class="bar"></span>Communications &amp; Escalation</h2>
+            <div class="row" style="margin-bottom:10px">
+              <select class="x" id="commWho" style="max-width:130px"><option>Leadership</option><option>Legal</option><option>Comms/PR</option><option>Affected team</option><option>External</option></select>
+              <input class="x" id="commMsg" placeholder="Update sent..." style="flex:1" onkeydown="if(event.key==='Enter')App.addComm('${i.id}')">
+              <button class="btn sm" onclick="App.addComm('${i.id}')">Log</button>
+            </div>
+            <div>${i.comms.length? i.comms.map(c=>`<div class="comm"><div class="ch">${c.who} &bull; ${new Date(c.t).toLocaleTimeString()}</div>${this.esc(c.msg)}</div>`).join('') : '<div class="empty" style="padding:20px">No communications logged.</div>'}</div>
+          </div>
+        </div>
+      </div>`;
+  },
+  setPhase(id,k){ const i=this.find(id); if(i&&i.status==='open'){ if(i.phase!==k){ i.phase=k; if(k==='contain'&&!i.containedAt)i.containedAt=Date.now();
+    i.timeline.push({t:Date.now(),x:'Advanced to phase: '+PHASES.find(p=>p.k===k).n}); } this.save(); this.renderActive(); this.renderDash(); } },
+  toggleStep(id,key){ const i=this.find(id); if(i){ i.steps[key]=!i.steps[key]; this.save(); this.renderActive(); } },
+  addTL(id){ const el=document.getElementById('tlInput'); const v=el.value.trim(); if(!v)return; const i=this.find(id);
+    i.timeline.push({t:Date.now(),x:v}); this.save(); this.renderActive(); },
+  addComm(id){ const msg=document.getElementById('commMsg').value.trim(); if(!msg)return; const who=document.getElementById('commWho').value;
+    const i=this.find(id); i.comms.push({who,msg,t:Date.now()}); i.timeline.push({t:Date.now(),x:'Comms to '+who+': '+msg}); this.save(); this.renderActive(); },
+  resolve(id){ const i=this.find(id); i.status='closed'; i.phase='post'; i.resolvedAt=Date.now();
+    i.timeline.push({t:Date.now(),x:'Incident resolved and closed'}); this.save(); this.renderAll(); this.toast(id+' resolved'); },
+
+  renderPlaybooks(){
+    document.getElementById('pbList').innerHTML=Object.keys(PLAYBOOKS).map(k=>{ const p=PLAYBOOKS[k];
+      const total=Object.values(p.steps).flat().length;
+      return `<div class="pbcard">
+        <div class="pt">${p.icon} ${p.name} <span class="phase">${total} steps</span></div>
+        <div class="pd">${p.desc} &bull; ATT&CK ${p.tech}</div>
+        <div style="margin-top:10px;font-size:12px;color:var(--faint)">
+          ${PHASES.filter(ph=>p.steps[ph.k]).map(ph=>`<b style="color:var(--blue2)">${ph.n}:</b> ${p.steps[ph.k].length} actions`).join(' &nbsp;·&nbsp; ')}
+        </div>
+      </div>`;}).join('');
+  },
+
+  fillPIRSelect(){ const sel=document.getElementById('pirSelect');
+    const closed=this.state.incidents.filter(i=>i.status==='closed');
+    sel.innerHTML='<option value="">— select a closed incident —</option>'+closed.map(i=>`<option value="${i.id}">${i.id} · ${this.esc(i.title)}</option>`).join('');
+  },
+  buildPIR(){ const id=document.getElementById('pirSelect').value; if(!id){document.getElementById('pirOut').textContent='Select a closed incident to generate its review.';return;}
+    const i=this.find(id), pb=PLAYBOOKS[i.pb];
+    const total=Object.values(pb.steps).flat().length, done=Object.values(i.steps).filter(Boolean).length;
+    const out=
+`POST-INCIDENT REVIEW
+Incident: ${i.id} — ${i.title}
+Author: Christina Apriani (Incident Commander)
+Severity: ${SEV[i.sev]}    Playbook: ${pb.name}
+ATT&CK: ${pb.tech}
+${'='.repeat(56)}
+
+1. SUMMARY
+Declared ${new Date(i.detectedAt).toLocaleString()} and resolved
+${i.resolvedAt?new Date(i.resolvedAt).toLocaleString():'—'}.
+Total time to resolve: ${i.resolvedAt?this.fmtDur(i.resolvedAt-i.detectedAt):'—'}.
+${i.containedAt?'Time to containment: '+this.fmtDur(i.containedAt-i.detectedAt)+'.':''}
+Playbook completion: ${done}/${total} actions executed.
+
+2. TIMELINE
+${i.timeline.map(e=>'  '+new Date(e.t).toLocaleString()+'  —  '+e.x).join('\n')}
+
+3. COMMUNICATIONS
+${i.comms.length?i.comms.map(c=>'  ['+c.who+'] '+c.msg).join('\n'):'  (none logged)'}
+
+4. WHAT WORKED
+  - The ${pb.name} playbook gave responders an ordered, phase-based path.
+  - ${done} of ${total} prescribed actions were completed and recorded.
+
+5. WHAT TO IMPROVE
+  - Review any playbook actions left incomplete and why.
+  - Convert the detection gap that delayed discovery into a new SIEM rule.
+  - Validate the new detection in a purple-team cycle before closing the loop.
+
+6. ACTION ITEMS (assign owners and due dates)
+  - [ ] Detection rule for the initial access vector
+  - [ ] Control change to close the root cause
+  - [ ] Tabletop exercise of this scenario within 90 days
+
+${'='.repeat(56)}
+Prepared for leadership review. Technical artifacts retained separately.`;
+    document.getElementById('pirOut').textContent=out;
+  },
+  copyPIR(){ navigator.clipboard.writeText(document.getElementById('pirOut').textContent).then(()=>this.toast('Review copied')); },
+
+  find(id){ return this.state.incidents.find(x=>x.id===id); },
+  ago(t){ const d=Date.now()-t,m=Math.floor(d/60000); if(m<1)return'just now'; if(m<60)return m+'m ago'; const h=Math.floor(m/60); if(h<24)return h+'h ago'; return Math.floor(h/24)+'d ago'; },
+  fmtDur(ms){ const m=Math.round(ms/60000); if(m<60)return m+'m'; const h=Math.floor(m/60),mm=m%60; if(h<24)return h+'h '+mm+'m'; const d=Math.floor(h/24); return d+'d '+(h%24)+'h'; },
+  esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); },
+  toast(m){ const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(this._t);this._t=setTimeout(()=>t.classList.remove('show'),2400); },
+  save(){ try{localStorage.setItem(this.KEY,JSON.stringify(this.state));}catch(e){} },
+  load(){ try{const s=localStorage.getItem(this.KEY);if(s)this.state=Object.assign(this.state,JSON.parse(s));}catch(e){} }
+};
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')App.closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')App.closeModal();});
+App.init();
+</script>
+</body>
+</html>
