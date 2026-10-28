@@ -40,8 +40,8 @@ rigor, measurement, and defensible process do.
 
 | Project | What it is |
 |---|---|
-| **[ATLAS — Adversary Emulation Planner](./red-team/adversary-emulation-planner)** | Build a threat-informed emulation plan across all 15 ATT&CK v20 tactics. Seed from documented actor profiles, attach a detection opportunity and a safety gate to every behavior, export for sign-off. |
-| **[SPECTRE — Engagement Ops](./red-team/redteam-engagement-ops)** | The console a red team lead runs an engagement from: findings register, a real **CVSS v3.1** calculator, risk heatmap, remediation tracker, and an auto-generated executive report. |
+| **[ATLAS - Adversary Emulation Planner](./red-team/adversary-emulation-planner)** | Build a threat-informed emulation plan across all 15 ATT&CK v20 tactics. Seed from documented actor profiles, attach a detection opportunity and a safety gate to every behavior, export for sign-off. |
+| **[SPECTRE - Engagement Ops](./red-team/redteam-engagement-ops)** | The console a red team lead runs an engagement from: findings register, a real **CVSS v3.1** calculator, risk heatmap, remediation tracker, and an auto-generated executive report. |
 
 ## 🔵 Blue Team
 
@@ -49,8 +49,8 @@ rigor, measurement, and defensible process do.
 
 | Project | What it is |
 |---|---|
-| **[SENTINEL — Detection Engineering Lab](./blue-team/detection-engineering-lab)** | A **Sigma** rule library mapped to ATT&CK, a live rule builder, a coverage view, and a 0–100 detection maturity score. Biased toward the top of the Pyramid of Pain. |
-| **[AEGIS — Incident Response Command Center](./blue-team/incident-response-center)** | Run an incident on the **NIST SP 800-61** lifecycle: live phased playbooks, timeline reconstruction, communications tracking, resolution metrics, and a one-click post-incident review. |
+| **[SENTINEL - Detection Engineering Lab](./blue-team/detection-engineering-lab)** | A **Sigma** rule library mapped to ATT&CK, a live rule builder, a coverage view, and a 0–100 detection maturity score. Biased toward the top of the Pyramid of Pain. |
+| **[AEGIS - Incident Response Command Center](./blue-team/incident-response-center)** | Run an incident on the **NIST SP 800-61** lifecycle: live phased playbooks, timeline reconstruction, communications tracking, resolution metrics, and a one-click post-incident review. |
 
 ## 🟣 Purple Team
 
@@ -58,8 +58,8 @@ rigor, measurement, and defensible process do.
 
 | Project | What it is |
 |---|---|
-| **[PRISM — ATT&CK Coverage Navigator](./purple-team/attack-coverage-navigator)** | Map every technique as tested, detected, validated, or a gap. Quantify coverage, surface blind spots, and build a prioritized hardening backlog. Exports a Navigator layer. |
-| **[CRUCIBLE — Detection Validation Platform](./purple-team/detection-validation-platform)** | Run detection validation cycles, record detected / partial / missed outcomes, track **MTTD**, and trend detection effectiveness cycle over cycle. |
+| **[PRISM - ATT&CK Coverage Navigator](./purple-team/attack-coverage-navigator)** | Map every technique as tested, detected, validated, or a gap. Quantify coverage, surface blind spots, and build a prioritized hardening backlog. Exports a Navigator layer. |
+| **[CRUCIBLE - Detection Validation Platform](./purple-team/detection-validation-platform)** | Run detection validation cycles, record detected / partial / missed outcomes, track **MTTD**, and trend detection effectiveness cycle over cycle. |
 
 ---
 
@@ -96,17 +96,17 @@ State is stored locally in the browser. Nothing is transmitted anywhere.
 
 ## Technical standards used
 
-- **MITRE ATT&CK v20** (Oct 2026) — 15 Enterprise tactics, including the Stealth / Defense Impairment split
-- **CVSS v3.1** — base-score math per the FIRST.org specification
-- **NIST SP 800-61r2** — incident response lifecycle
-- **Sigma** — vendor-agnostic detection format
-- **Pyramid of Pain** — detection prioritization
+- **MITRE ATT&CK v20** (Oct 2026) - 15 Enterprise tactics, including the Stealth / Defense Impairment split
+- **CVSS v3.1** - base-score math per the FIRST.org specification
+- **NIST SP 800-61r2** - incident response lifecycle
+- **Sigma** - vendor-agnostic detection format
+- **Pyramid of Pain** - detection prioritization
 
 ---
 
 <div align="center">
 
-**Christina Apriani** · Head of Cyber Security
+**Christina Apriani** · Head of Cyber Security Profesional
 *Red Team · Blue Team · Purple Team · Incident Response*
 
 <sub>All projects are defensive and methodology-focused. For authorized use only.</sub>
